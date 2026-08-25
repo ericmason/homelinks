@@ -6,6 +6,7 @@
    profile and a personal profile each get their own everything. */
 
 import { api } from './data.js';
+import { titleFor } from './history.js';
 import { PROVIDERS, curate } from './curate.js';
 import { push, pull, unmirror, granted, folders, parentOf, setParent } from './bookmarks.js';
 
@@ -278,20 +279,39 @@ function drop(si, ii) {
   drag = null; saveLinks(); render();
 }
 
+const full = (v) => {
+  const t = v.trim();
+  return t && !/^[a-z]+:\/\//i.test(t) ? 'https://' + t : t;
+};
+
 function startEdit(si, ii) {
   const a = $(`.tile[data-si="${si}"][data-ii="${ii}"]`);
   if (!a) return;
   const it = S.links[si].items[ii];
   const txt = $('.tile-txt', a);
-  txt.innerHTML = `<input class="editfield" value="${esc(it.name)}" placeholder="Name">
-                   <input class="editfield host" value="${esc(it.url)}" placeholder="https://">`;
-  const [n, u] = $$('input', txt);
-  n.focus(); n.select();
-  const commit = () => {
-    it.name = n.value.trim();
-    it.url = u.value.trim();
-    if (it.url && !/^[a-z]+:\/\//i.test(it.url)) it.url = 'https://' + it.url;
-    if (!it.name && it.url) it.name = host(it.url);
+  // A new link starts at its URL, because that is the only part you actually
+  // have to type: leaving the field fills in the name and the icon from what
+  // the browser already knows about the site. An existing link still opens on
+  // its name, which is what clicking a tile is nearly always for.
+  const fresh = !it.url && !it.name;
+  const nameFld = `<input class="editfield" data-f="name" value="${esc(it.name)}" placeholder="Name">`;
+  const urlFld = `<input class="editfield host" data-f="url" value="${esc(it.url)}" placeholder="https://">`;
+  txt.innerHTML = fresh ? urlFld + nameFld : nameFld + urlFld;
+  const n = $('[data-f="name"]', txt), u = $('[data-f="url"]', txt);
+  const first = fresh ? u : n;
+  first.focus(); first.select();
+
+  // Leaving the URL is the first moment we know the site.
+  u.addEventListener('blur', async () => {
+    const url = full(u.value);
+    if (!url) return;
+    paintIcon(a, url);
+    if (!n.value.trim()) n.value = await titleFor(url);
+  });
+
+  const commit = async () => {
+    it.url = full(u.value);
+    it.name = n.value.trim() || (it.url ? await titleFor(it.url) : '');
     if (!it.name && !it.url) S.links[si].items.splice(ii, 1);
     saveLinks(); render();
   };
@@ -304,7 +324,11 @@ function startEdit(si, ii) {
       e.stopPropagation();
       if (e.key === 'Enter') { e.preventDefault(); fin(); }
       if (e.key === 'Escape') { e.preventDefault(); done = true; render(); }
-      if (e.key === 'Tab' && el === n) { e.preventDefault(); u.focus(); u.select(); }
+      if (e.key === 'Tab' && el === first) {
+        e.preventDefault();
+        const other = el === n ? u : n;
+        other.focus(); other.select();
+      }
     };
   });
 }
