@@ -5,7 +5,7 @@
    from chrome.history. Because an extension is installed per profile, a work
    profile and a personal profile each get their own everything. */
 
-import { api } from './data.js';
+import { api, stale } from './data.js';
 import { titleFor } from './history.js';
 import { PROVIDERS, curate, listModels } from './curate.js';
 import { push, pull, unmirror, granted, folders, parentOf, setParent } from './bookmarks.js';
@@ -23,7 +23,7 @@ const GRADIENTS = {
 };
 const SOLIDS = { obsidian:'#0b0d10', graphite:'#16191e', navy:'#0d1622', bottle:'#0c1712', wine:'#180d12', bone:'#1b1a17' };
 
-let S = { links: [], settings: {}, frequent: [], backgrounds: [] };
+let S = { links: [], settings: {}, frequent: [] };
 let editing = false;
 let matches = [];
 let selIdx = 0;
@@ -61,8 +61,11 @@ const fetchIcon = async (src) => {
   return { blob, bytes: new Uint8Array(await blob.arrayBuffer()) };
 };
 
-const blankIcon = fetchIcon(iconSrc('https://never.invalid/')).then(r => r.bytes).catch(() => null);
-const iconSeen = new Map();
+// Asked for on the first probe rather than on load, so a tab whose icons are
+// all known already never fetches anything at all.
+let blankP;
+const blankIcon = () =>
+  (blankP ||= fetchIcon(iconSrc('https://never.invalid/')).then(r => r.bytes).catch(() => null));
 
 // A monochrome dark mark -- GitHub's, npm's, Vercel's -- disappears against a
 // dark cap, so weigh the icon's own pixels and stand the dark ones on a light
@@ -88,9 +91,9 @@ async function tooDark(blob) {
 const rootOf = (u) => { try { return new URL(u).origin + '/'; } catch { return null; } };
 
 async function probe(url) {
-  const [icon, blank] = await Promise.all([fetchIcon(iconSrc(url)).catch(() => null), blankIcon]);
+  const [icon, blank] = await Promise.all([fetchIcon(iconSrc(url)).catch(() => null), blankIcon()]);
   if (!icon?.bytes.length || (blank && sameBytes(icon.bytes, blank))) return null;
-  return { src: iconSrc(url), dark: await tooDark(icon.blob) };
+  return { url, dark: await tooDark(icon.blob) };
 }
 
 // The busiest page this profile has actually opened on a host. Cached per host,
@@ -115,34 +118,110 @@ function visitedOn(h) {
    the site root -- covers a deep link into a site you normally enter at the top;
    any page on the host you have actually opened -- covers the reverse, a site
    you read every day and never at its root, like Wikipedia or a Jira board. */
+async function findIcon(pageUrl) {
+  const tried = new Set();
+  for (const guess of [() => pageUrl, () => rootOf(pageUrl), () => visitedOn(host(pageUrl))]) {
+    const url = await guess();
+    if (!url || tried.has(url)) continue;
+    tried.add(url);
+    const found = await probe(url);
+    if (found) return found;
+  }
+  return null;
+}
+
+/* Working that out costs up to three fetches, a history search, and a pass over
+   the icon's own pixels -- and a page of thirty links would pay all of it,
+   thirty times over, on every new tab. So the answer is kept: which guess won,
+   and whether the mark needs a light plate behind it. A link that has been seen
+   before wears its icon in the same frame as its tile, with no letter cap in
+   between and nothing fetched.
+
+   Sites do change their mark, so what's on the page is checked again a day
+   later -- after the paint, never before it. A link with no icon is rechecked
+   within the hour instead, because that is usually a site the browser hasn't
+   been to yet, and the visit that gives it one can happen at any time. */
+let icons = {};                 // pageUrl -> { u: the url that had it, d: dark, t: checked }
+const ICON_TTL = 864e5;
+const MISS_TTL = 3600e3;
+const current = (e) => e && Date.now() - e.t < (e.u ? ICON_TTL : MISS_TTL);
+
+const iconSeen = new Map();     // resolved, or in flight, on this page
 function iconFor(pageUrl) {
-  if (!iconSeen.has(pageUrl)) iconSeen.set(pageUrl, (async () => {
-    const tried = new Set();
-    for (const guess of [() => pageUrl, () => rootOf(pageUrl), () => visitedOn(host(pageUrl))]) {
-      const url = await guess();
-      if (!url || tried.has(url)) continue;
-      tried.add(url);
-      const found = await probe(url);
-      if (found) return found;
-    }
-    return null;
-  })());
+  if (!iconSeen.has(pageUrl)) iconSeen.set(pageUrl, findIcon(pageUrl).then((found) => {
+    remember(pageUrl, found);
+    return found;
+  }));
   return iconSeen.get(pageUrl);
 }
 
-// Swaps the letter for the site's own icon, once we know there is one. The
-// bytes are already in the cache by then, so the image paints in the same frame.
-async function paintIcon(el, pageUrl) {
+/* Written at most once every quarter second, so resolving thirty links costs
+   two writes rather than thirty. It has to be a ceiling and not a quiet period:
+   the answers arrive in a trickle as the probes come back, and a timer reset on
+   each one would never fire before the tab was closed -- and that is the tab
+   whose work there was most to save. */
+let iconWrite;
+function remember(pageUrl, found) {
+  icons[pageUrl] = { u: found?.url || '', d: found?.dark ? 1 : 0, t: Date.now() };
+  saveIcons();
+}
+function saveIcons() {
+  iconWrite ||= setTimeout(() => {
+    iconWrite = null;
+    api('/api/icons', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(icons),
+    });
+  }, 250);
+}
+
+// Swaps the letter for the site's own icon. A known link paints in the frame
+// its tile does; anything else lands when the probe comes back.
+function paintIcon(el, pageUrl) {
   if (!pageUrl) return;
   const cap = $('.cap', el);
-  const found = cap && await iconFor(pageUrl);
-  if (!found) return;
+  if (!cap) return;
+  const hit = icons[pageUrl];
+  if (hit) return dressCap(cap, hit.u, hit.d);
+  iconFor(pageUrl).then(f => dressCap(cap, f?.url, f?.dark));
+}
+
+function dressCap(cap, url, dark) {
+  if (!url) {                                  // no icon: the letter cap stands
+    if (cap.classList.contains('has-icon')) cap.textContent = cap.dataset.letter || '';
+    cap.classList.remove('has-icon', 'icon-dark');
+    return;
+  }
   const img = new Image();
-  img.src = found.src;
+  img.src = iconSrc(url);
   img.alt = '';
   cap.replaceChildren(img);
   cap.classList.add('has-icon');
-  cap.classList.toggle('icon-dark', found.dark);
+  cap.classList.toggle('icon-dark', !!dark);
+}
+
+/* What the browser has now, against what the cache remembers, for the links
+   actually on this page. Runs once the page is up and repaints only what
+   changed, which on almost every tab is nothing. */
+async function freshenIcons() {
+  const live = [...new Set([
+    ...S.links.flatMap(s => s.items.map(i => i.url)),
+    ...(S.frequent || []).map(f => f.url),
+  ])].filter(Boolean);
+
+  for (const url of live) {
+    const had = icons[url];
+    if (current(had)) continue;
+    const found = await findIcon(url);
+    const changed = (found?.url || '') !== (had?.u || '') || (found?.dark ? 1 : 0) !== (had?.d || 0);
+    remember(url, found);
+    if (changed) $$(`[data-icon="${CSS.escape(url)}"]`)
+      .forEach(el => dressCap($('.cap', el), found?.url, found?.dark));
+  }
+
+  // Links that have gone stop taking up room.
+  const keep = new Set(live);
+  const drop = Object.keys(icons).filter(k => !keep.has(k));
+  if (drop.length) { for (const k of drop) delete icons[k]; saveIcons(); }
 }
 
 let toastT;
@@ -241,8 +320,10 @@ function tile(it, si, ii) {
   a.href = it.url || '#';
   a.dataset.si = si; a.dataset.ii = ii;
   a.dataset.name = it.name || ''; a.dataset.host = host(it.url || '');
+  a.dataset.icon = it.url || '';
   a.style.cssText = capStyle(host(it.url || it.name || '?'));
-  a.innerHTML = `<span class="cap">${initial(it.name || host(it.url || '?'))}</span>
+  const letter = initial(it.name || host(it.url || '?'));
+  a.innerHTML = `<span class="cap" data-letter="${letter}">${letter}</span>
     <span class="tile-txt">
       <span class="tile-name">${esc(it.name || 'Untitled')}</span>
       <span class="tile-host">${esc(host(it.url || ''))}</span>
@@ -305,6 +386,7 @@ function startEdit(si, ii) {
   u.addEventListener('blur', async () => {
     const url = full(u.value);
     if (!url) return;
+    a.dataset.icon = url;
     paintIcon(a, url);
     if (!n.value.trim()) n.value = await titleFor(url);
   });
@@ -437,8 +519,9 @@ function renderFrequent() {
     const a = document.createElement('a');
     a.className = 'chip'; a.href = f.url;
     a.dataset.name = f.title || f.host; a.dataset.host = f.host;
+    a.dataset.icon = f.url;
     a.style.cssText = capStyle(f.host);
-    a.innerHTML = `<span class="cap">${initial(f.host)}</span>
+    a.innerHTML = `<span class="cap" data-letter="${initial(f.host)}">${initial(f.host)}</span>
       <span>${esc(f.host)}</span><span class="n">${f.count}</span>`;
     paintIcon(a, f.url);
     const add = document.createElement('button');
@@ -464,21 +547,44 @@ function applyBackground() {
   el.style.filter = b.blur ? `blur(${b.blur}px)` : '';
   document.body.dataset.grain = b.grain ? 'on' : 'off';
 
-  if (b.mode === 'photo') {
-    const list = S.backgrounds || [];
-    if (!list.length) { el.style.backgroundImage = GRADIENTS[b.gradient] || GRADIENTS.harbor; return; }
-    let pick;
-    if (b.rotate === 'load') pick = list[Math.floor(Math.random() * list.length)];
-    else if (b.rotate === 'day') pick = list[dayIndex(list.length)];
-    else pick = list.find(x => x.id === b.photoId) || list[0];
-    el.style.backgroundImage = `url("${pick.src}")`;
-    el.dataset.current = pick.id;
-  } else if (b.mode === 'solid') {
+  if (b.mode === 'photo') { applyPhoto(b, el); return; }
+  el.dataset.current = '';
+  if (b.mode === 'solid') {
     el.style.backgroundImage = 'none';
     el.style.backgroundColor = SOLIDS[b.solid] || SOLIDS.obsidian;
   } else {
     el.style.backgroundImage = GRADIENTS[b.gradient] || GRADIENTS.harbor;
   }
+}
+
+/* The photograph in two passes. The index carries a thumbnail of every image,
+   so the picture is there in the first frame; the full-size one is read out of
+   IndexedDB and decoded behind it and swapped in when it's ready. It is the
+   same photograph either way, so nothing moves -- it only sharpens. Reading a
+   whole image before the page could draw is what a new tab used to wait on. */
+let photos = null;              // [{ id, name, thumb }], null until it's read
+let photoRun = 0;
+
+async function applyPhoto(b, el) {
+  // A profile that predates the index builds it here, once.
+  if (!photos) photos = (await api('/api/photos')).photos;
+  if (!photos.length) { el.style.backgroundImage = GRADIENTS[b.gradient] || GRADIENTS.harbor; return; }
+
+  const pick = b.rotate === 'load' ? photos[Math.floor(Math.random() * photos.length)]
+    : b.rotate === 'day' ? photos[dayIndex(photos.length)]
+    : photos.find(x => x.id === b.photoId) || photos[0];
+  if (el.dataset.current === pick.id) return;      // already up; a slider moved
+  const run = ++photoRun;
+  if (pick.thumb) el.style.backgroundImage = `url("${pick.thumb}")`;
+  el.dataset.current = pick.id;
+
+  const full = (await api('/api/photo?id=' + encodeURIComponent(pick.id))).photo;
+  if (!full || run !== photoRun) return;
+  const img = new Image();
+  img.src = full.src;
+  await img.decode().catch(() => {});
+  if (run !== photoRun) return;
+  el.style.backgroundImage = `url("${full.src}")`;
 }
 
 function renderSheet() {
@@ -510,27 +616,26 @@ function renderSheet() {
 
   const ps = $('#photoSwatches');
   ps.innerHTML = '';
-  (S.backgrounds || []).forEach(p => {
+  (photos || []).forEach(p => {
     const s = document.createElement('button');
     s.className = 'sw' + (b.photoId === p.id && b.mode === 'photo' ? ' on' : '');
-    s.style.backgroundImage = `url("${p.src}")`;
+    s.style.backgroundImage = `url("${p.thumb}")`;
     s.innerHTML = `<span class="lbl">${esc(p.name)}</span>`;
     s.onclick = () => { b.mode = 'photo'; b.photoId = p.id; b.rotate = 'pinned'; $('#rotate').value = 'pinned'; commitBg(); };
-    if (true) {
-      const d = document.createElement('button');
-      d.className = 'sw-del'; d.textContent = '×'; d.title = 'Delete image';
-      d.onclick = async (e) => {
-        e.stopPropagation();
-        await api('/api/background?name=' + encodeURIComponent(p.id), { method: 'DELETE' });
-        S.backgrounds = (await api('/api/backgrounds')).backgrounds;
-        if (b.photoId === p.id) b.photoId = S.backgrounds[0]?.id || '';
-        commitBg();
-      };
-      s.appendChild(d);
-    }
+    const d = document.createElement('button');
+    d.className = 'sw-del'; d.textContent = '×'; d.title = 'Delete image';
+    d.onclick = async (e) => {
+      e.stopPropagation();
+      await api('/api/background?name=' + encodeURIComponent(p.id), { method: 'DELETE' });
+      photos = (await api('/api/photos')).photos;
+      if (b.photoId === p.id) b.photoId = photos[0]?.id || '';
+      $('#bg').dataset.current = '';
+      commitBg();
+    };
+    s.appendChild(d);
     ps.appendChild(s);
   });
-  if (!(S.backgrounds || []).length) {
+  if (!(photos || []).length) {
     ps.innerHTML = '<p class="note">No images yet. Add one above, or drop an image anywhere on the page.</p>';
   }
   $('#rotate').value = b.rotate || 'pinned';
@@ -573,7 +678,12 @@ async function renderBmParent() {
   sel.value = list.some(f => JSON.stringify(f.path) === want) ? want : (sel.options[0]?.value || '');
 }
 
-const sheetOpen = () => { curateClose(); $('#sheet').hidden = false; $('#veil').hidden = false; renderSheet(); renderDisplay(); };
+const sheetOpen = async () => {
+  curateClose(); $('#sheet').hidden = false; $('#veil').hidden = false;
+  renderSheet(); renderDisplay();
+  // A profile with images but no index yet: build it, then show them.
+  if (!photos) { photos = (await api('/api/photos')).photos; renderSheet(); }
+};
 const sheetClose = () => { $('#sheet').hidden = true; $('#veil').hidden = true; $('#q').focus(); };
 
 /* ---------------------------------------------------------------- events */
@@ -833,14 +943,14 @@ function wire() {
       S.settings.background.photoId = j.id;
       S.settings.background.rotate = 'pinned';
     }
-    S.backgrounds = (await api('/api/backgrounds')).backgrounds;
+    photos = (await api('/api/photos')).photos;
     e.target.value = '';
     commitBg();
   };
 
   $('#freqRefresh').onclick = async () => {
     $('#freqRefresh').textContent = 'counting…';
-    S.frequent = (await api('/api/frequent?refresh=1')).frequent;
+    S.frequent = (await api('/api/frequent')).frequent;
     $('#freqRefresh').textContent = 'recount';
     renderFrequent();
   };
@@ -853,24 +963,45 @@ function wire() {
     e.preventDefault();
     const j = await api('/api/background?name=' + encodeURIComponent(f.name), { method: 'POST', body: f });
     if (j.error) return toast(j.error);
-    S.backgrounds = (await api('/api/backgrounds')).backgrounds;
+    photos = (await api('/api/photos')).photos;
     Object.assign(S.settings.background, { mode: 'photo', photoId: j.id, rotate: 'pinned' });
     commitBg(); toast(`Background set to ${f.name}`);
   });
 }
 
-/* ---------------------------------------------------------------- boot */
+/* ---------------------------------------------------------------- boot
+
+   One read of chrome.storage, then draw. Nothing that has to be computed or
+   decoded is allowed in front of the first paint: the visit counts behind
+   Frequent mean reading six months of history, an icon costs up to three
+   fetches, a background image is megabytes out of IndexedDB, and the bookmarks
+   folder is a walk of the whole tree. Every one of them is answered from what
+   the last tab left behind, and brought up to date in refresh() once this tab
+   is already on screen and taking keys. */
 (async function init() {
-  S = await api('/api/state');
-  S.settings.background ||= {};
+  const boot = await api('/api/state');
+  S = { links: boot.links, settings: boot.settings, frequent: boot.frequent?.list || [] };
+  icons = boot.icons || {};
+  photos = boot.photos;
+
   applyBackground();
   tick(); setInterval(tick, 1000);
   render();
   renderFrequent();
   wire();
   $('#q').focus();
-  adopt();
+
+  requestIdleCallback(() => refresh(boot), { timeout: 2000 });
 })();
+
+async function refresh(boot) {
+  await adopt();
+  if (stale(boot.frequent)) {
+    S.frequent = (await api('/api/frequent')).frequent;
+    renderFrequent();
+  }
+  await freshenIcons();
+}
 
 /* Links may have changed on another computer since this tab last opened. The
    bookmarks folder syncs on its own, so a folder that no longer matches what we
