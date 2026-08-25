@@ -90,6 +90,12 @@ The extension is loaded unpacked, so install it separately on each computer. Its
 
 Chrome and Brave give a new tab's keyboard focus to the address bar, and [the extension docs say not to fight it](https://developer.chrome.com/docs/extensions/develop/ui/override-chrome-pages): "Remember that new tabs give keyboard focus to the address bar first." No extension API moves focus into the page. On macOS the only shortcuts that shift focus between browser panes are `⌘⌥↓` and `⌘⌥↑`; there is no "skip to web contents" binding, so otherwise it takes a click. Once the page has focus, any letter jumps to the prompt.
 
+## Packaging
+
+Nothing here compiles. The extension is ES modules the browser loads as they are, so `load unpacked` on `extension/` is the whole development loop: edit a file, hit reload on the extensions page, open a tab.
+
+`scripts/build.sh` exists only to make a release. It copies `extension/` to `dist/extension/`, drops the `.DS_Store` files macOS leaves behind, checks that every path the manifest names is in the copy, and zips it as `dist/homelinks-<version>.zip` for the Chrome Web Store. `dist/` is gitignored; the artifact is built from source, never committed.
+
 ## Files
 
 | File | Holds |
