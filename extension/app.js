@@ -7,7 +7,7 @@
 
 import { api } from './data.js';
 import { titleFor } from './history.js';
-import { PROVIDERS, curate } from './curate.js';
+import { PROVIDERS, curate, listModels } from './curate.js';
 import { push, pull, unmirror, granted, folders, parentOf, setParent } from './bookmarks.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -593,13 +593,62 @@ function curateOpen() {
     .map(([k, p]) => `<option value="${k}"${k === ai.provider ? ' selected' : ''}>${p.label}</option>`).join('');
   $('#aiKey').value = ai.key || '';
   $('#aiKey').placeholder = PROVIDERS[ai.provider]?.keyHint || '';
-  $('#aiModel').value = ai.model || '';
-  $('#aiModel').placeholder = PROVIDERS[ai.provider]?.defaultModel || '';
+  typedModel(ai.model || '');
   $('#keyLink').href = PROVIDERS[ai.provider]?.keyUrl || '#';
   $('#autoCurate').checked = !!ai.autoCurate;
   $('#sheet').hidden = true;
   $('#curateSheet').hidden = false; $('#veil').hidden = false;
   (ai.key ? $('#runCurate') : $('#aiKey')).focus();
+  loadModels();
+}
+
+/* ----------------------------------------------------------------- models
+
+   Which models exist is the provider's answer, not ours: they add and retire
+   them constantly, and an account only sees what it is entitled to. So the
+   field is a text box until a key proves itself, and a list of that key's own
+   models afterwards -- and it stays a text box if the account can't list them,
+   because typing a model name is better than being stuck. */
+
+let modelRun = 0;
+
+// Back to a typed field, holding whatever the setting says.
+function typedModel(v) {
+  $('#aiModel').hidden = true;
+  $('#aiModel').innerHTML = '';                  // last provider's models
+  $('#aiModelText').hidden = false;
+  $('#aiModelText').value = v || '';
+  $('#aiModelText').placeholder = PROVIDERS[S.settings.ai?.provider]?.defaultModel || '';
+}
+
+const modelNote = (msg) => {
+  const el = $('#modelNote');
+  el.textContent = msg || '';
+  el.hidden = !msg;
+};
+
+async function loadModels() {
+  const ai = S.settings.ai || {};
+  const run = ++modelRun;
+  if (!ai.key) { typedModel(ai.model); return modelNote(''); }
+  modelNote('Checking the key…');
+  try {
+    const list = await listModels(ai.provider, ai.key);
+    if (run !== modelRun) return;                  // a newer key or provider won
+    const sel = $('#aiModel');
+    sel.innerHTML = list.map(m =>
+      `<option value="${esc(m.id)}">${esc(m.label)}</option>`).join('');
+    const want = ai.model || PROVIDERS[ai.provider].defaultModel;
+    sel.value = list.some(m => m.id === want) ? want : list[0].id;
+    sel.hidden = false; $('#aiModelText').hidden = true;
+    ai.model = sel.value;
+    saveSettings();
+    modelNote(`${list.length} model${list.length > 1 ? 's' : ''} on this key`);
+  } catch (e) {
+    if (run !== modelRun) return;
+    typedModel(ai.model);
+    modelNote(String(e.message || e).slice(0, 140));
+  }
 }
 const curateClose = () => {
   $('#curateSheet').hidden = true; $('#veil').hidden = true;
@@ -610,7 +659,7 @@ function readAi() {
   const ai = S.settings.ai;
   ai.provider = $('#aiProvider').value;
   ai.key = $('#aiKey').value.trim();
-  ai.model = $('#aiModel').value.trim();
+  ai.model = ($('#aiModel').hidden ? $('#aiModelText').value : $('#aiModel').value).trim();
   ai.autoCurate = $('#autoCurate').checked;
   return ai;
 }
@@ -695,10 +744,21 @@ function wire() {
     curateClose(); render(); renderFrequent();
     toast(`${n} link${n > 1 ? 's' : ''} in ${groups.length} group${groups.length > 1 ? 's' : ''}`);
   };
+  $('#aiModel').onchange = () => { readAi(); saveSettings(); };
+  // Only when the field is left or Enter is pressed: a request per keystroke
+  // would be a lot of rejected keys and a lot of traffic.
+  $('#aiKey').onchange = () => { readAi(); saveSettings(); loadModels(); };
+
   $('#aiProvider').onchange = () => {
     const p = PROVIDERS[$('#aiProvider').value];
-    $('#aiModel').value = ''; $('#aiModel').placeholder = p.defaultModel;
+    // Set the provider before the field is redrawn: the last provider's models
+    // mean nothing here, and its placeholder even less.
+    S.settings.ai.provider = $('#aiProvider').value;
+    S.settings.ai.model = '';
+    typedModel('');
     $('#aiKey').placeholder = p.keyHint; $('#keyLink').href = p.keyUrl;
+    saveSettings();
+    loadModels();
   };
   $('#autoCurate').onchange = () => { readAi(); saveSettings(); };
   $('#sheetClose').onclick = sheetClose;

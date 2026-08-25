@@ -26,6 +26,15 @@ export const PROVIDERS = {
       }];
     },
     text: (j) => (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''),
+    // Newest first, which is the order the endpoint already returns.
+    models: (key) => ['https://api.anthropic.com/v1/models?limit=1000', {
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    }],
+    list: (j) => (j.data || []).map(m => ({ id: m.id, label: m.display_name || m.id })),
   },
 
   openai: {
@@ -41,6 +50,15 @@ export const PROVIDERS = {
       }];
     },
     text: (j) => j.choices?.[0]?.message?.content || '',
+    models: (key) => ['https://api.openai.com/v1/models', { headers: { authorization: `Bearer ${key}` } }],
+    // The list is every model on the account, most of which cannot hold a
+    // conversation: embeddings, speech, images, moderation. Keep the chat
+    // families and drop the rest, newest first.
+    list: (j) => (j.data || [])
+      .filter(m => /^(gpt|o\d|chatgpt)/.test(m.id))
+      .filter(m => !/embed|audio|realtime|transcribe|tts|image|moderation|search|instruct/.test(m.id))
+      .sort((a, b) => (b.created || 0) - (a.created || 0))
+      .map(m => ({ id: m.id, label: m.id })),
   },
 
   google: {
@@ -56,6 +74,12 @@ export const PROVIDERS = {
       }];
     },
     text: (j) => j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '',
+    models: (key) => [`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=${encodeURIComponent(key)}`, {}],
+    // Google lists embedding and image models beside the chat ones, and says
+    // outright which can answer a prompt.
+    list: (j) => (j.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).some(x => /generatecontent/i.test(x)))
+      .map(m => ({ id: String(m.name).replace(/^models\//, ''), label: m.displayName || m.name })),
   },
 };
 
@@ -138,6 +162,32 @@ export function validate(groups, allowedHosts) {
 }
 
 /* Returns { groups, rejected, candidates }. Throws with a readable message. */
+/* One message for a failed call, whichever provider and whichever endpoint. */
+async function fail(cfg, res) {
+  const body = await res.text().catch(() => '');
+  let msg = `${cfg.label} returned ${res.status}`;
+  if (res.status === 401 || res.status === 403) msg = `${cfg.label} rejected the API key.`;
+  else if (res.status === 429) msg = `${cfg.label} is rate limiting. Wait a moment and retry.`;
+  else { try { msg = JSON.parse(body).error?.message || msg; } catch {} }
+  return new Error(msg);
+}
+
+/* The models this key can actually use. There is no offline list worth
+   shipping -- providers add and retire models constantly, and an account only
+   sees the ones it is entitled to -- so ask, and let the answer double as the
+   check on the key: it comes back, or it doesn't. */
+export async function listModels(provider, key) {
+  const cfg = PROVIDERS[provider];
+  if (!cfg?.models) throw new Error(`Unknown provider: ${provider}`);
+  if (!key) throw new Error('Add an API key first.');
+  const [url, init] = cfg.models(key);
+  const res = await fetch(url, init);
+  if (!res.ok) throw await fail(cfg, res);
+  const list = cfg.list(await res.json());
+  if (!list.length) throw new Error(`${cfg.label} listed no models this key can use.`);
+  return list;
+}
+
 export async function curate({ provider, key, model, target = 24, existing = [], limit = 45 }) {
   const cfg = PROVIDERS[provider];
   if (!cfg) throw new Error(`Unknown provider: ${provider}`);
@@ -156,14 +206,7 @@ export async function curate({ provider, key, model, target = 24, existing = [],
 
   const [url, init] = cfg.request(key, model || cfg.defaultModel, prompt);
   const res = await fetch(url, init);
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    let msg = `${cfg.label} returned ${res.status}`;
-    if (res.status === 401 || res.status === 403) msg = `${cfg.label} rejected the API key.`;
-    else if (res.status === 429) msg = `${cfg.label} is rate limiting. Wait a moment and retry.`;
-    else { try { msg = JSON.parse(body).error?.message || msg; } catch {} }
-    throw new Error(msg);
-  }
+  if (!res.ok) throw await fail(cfg, res);
   const text = cfg.text(await res.json());
   const parsed = extractJson(text);
   if (!parsed) throw new Error(`${cfg.label} did not return JSON.`);

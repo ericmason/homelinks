@@ -15,7 +15,7 @@ There is nothing to run and no server. Everything lives in the extension.
 
 ## Organize
 
-Press `⌘O` and paste an API key from Anthropic, OpenAI, or Google. The extension reads this profile's history, sends the model a ranked list of hosts and page titles, and shows you the groups it proposes. Nothing is applied until you press **Use these**.
+Press `⌘O` and paste an API key from Anthropic, OpenAI, or Google. Leaving the key field asks the provider which models the key can use, so **Model** becomes a list rather than a name you have to remember and spell. A key the provider rejects leaves the field as a text box and says why. The extension reads this profile's history, sends the model a ranked list of hosts and page titles, and shows you the groups it proposes. Nothing is applied until you press **Use these**.
 
 Two things the extension refuses to do with the model's answer:
 
