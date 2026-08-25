@@ -542,7 +542,7 @@ async function renderBmParent() {
   for (const f of list) {
     const o = document.createElement('option');
     o.value = JSON.stringify(f.path);
-    o.textContent = '\u2007\u2007'.repeat(f.depth) + f.title;
+    o.textContent = f.path.join(' / ');
     sel.appendChild(o);
   }
   const want = JSON.stringify(here || S.settings.bookmarkParent || []);
