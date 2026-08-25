@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Homepage",
+  "name": "Homelinks",
   "version": "2.2.0",
   "description": "A keyboard-first new tab that organizes itself from your own browsing history.",
   "minimum_chrome_version": "116",

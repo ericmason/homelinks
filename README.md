@@ -1,4 +1,4 @@
-# Homepage
+# Homelinks
 
 A new tab page that organizes itself from your own browsing history.
 
@@ -66,17 +66,19 @@ The same sheet sets the clock to 12- or 24-hour, the date to `Fri, Aug 21` / `Fr
 
 ## Address bar
 
-Turn on **Keep a bookmarks folder** and the extension writes your links to a folder called `Homepage`, laid out the way the page is: `Homepage / <group> / <link>`. Chrome's omnibox indexes bookmarks by title as well as URL, so typing `confluence` finds `equisolve.atlassian.net` — something history alone never does, because history only matches the URL.
+Turn on **Keep a bookmarks folder** and the extension writes your links to a folder called `Homelinks`, laid out the way the page is: `Homelinks / <group> / <link>`. Chrome's omnibox indexes bookmarks by title as well as URL, so typing `confluence` finds `equisolve.atlassian.net` — something history alone never does, because history only matches the URL.
 
 The **Folder** picker under the setting says where that folder lives. It lists every folder in this profile, defaults to Other Bookmarks, and moving it keeps the same folder, so the links inside are not deleted and made again. Drag the folder somewhere else in the bookmark manager and the picker follows it there.
 
 It asks for bookmark access at that moment, not at install. Renaming, reordering, or deleting a link updates the folder. Turning the setting off deletes the folder and nothing else; your links stay in the app.
 
+The folder was called `Homepage` before the project took its own name. Because it is found by title, a rename alone would walk past the one already synced to your other computers and build an empty second copy beside it, so the extension takes the old folder over in place: same folder, same links, new name.
+
 ## Syncing between computers
 
 The same folder carries your links between machines. Sign both browsers into the same sync chain, turn the setting on in each, and an edit on one shows up on the other the next time you open a tab there. There is no server, no account, and nothing to configure: bookmarks are the one thing browsers sync reliably, and the folder is already there for the address bar.
 
-Each computer keeps its own answer to where the folder sits, because bookmark ids are handed out per profile: the picker stores the folder names on the way down, and a path the other computer doesn't have falls back to Other Bookmarks rather than building folders you didn't ask for. A computer that finds the synced `Homepage` folder somewhere else adopts it where it stands, so the two never drag it back and forth.
+Each computer keeps its own answer to where the folder sits, because bookmark ids are handed out per profile: the picker stores the folder names on the way down, and a path the other computer doesn't have falls back to Other Bookmarks rather than building folders you didn't ask for. A computer that finds the synced `Homelinks` folder somewhere else adopts it where it stands, so the two never drag it back and forth.
 
 Every local edit writes the folder and records what it wrote. When a new tab finds the folder no longer matching that record, the change came from somewhere else, so the page adopts it and says so. Edits made by hand in the bookmark manager come across the same way. Last edit wins, which is the right answer when one person is using both computers.
 
@@ -99,7 +101,7 @@ Chrome and Brave give a new tab's keyboard focus to the address bar, and [the ex
 | `store.js` | `chrome.storage` and IndexedDB |
 | `history.js` | `chrome.history` aggregated by host |
 | `curate.js` | the three providers, the prompt, and validation |
-| `bookmarks.js` | the `Homepage` folder: address-bar names, and sync between computers |
+| `bookmarks.js` | the `Homelinks` folder: address-bar names, and sync between computers |
 | `sw.js` | the monthly re-curation alarm |
 
 Fonts and their licenses are in `extension/fonts/`.

@@ -1,4 +1,4 @@
-/* Homepage. Keyboard first: type to narrow, Enter to go.
+/* Homelinks. Keyboard first: type to narrow, Enter to go.
 
    Runs entirely inside the extension. Links and settings live in
    chrome.storage, background images in IndexedDB, and the Frequent row comes
@@ -549,7 +549,7 @@ async function renderDisplay() {
   await renderBmParent();
 }
 
-/* The picker lists this profile's folders and selects the one the Homepage
+/* The picker lists this profile's folders and selects the one the Homelinks
    folder is actually in, which is not always the one in settings: the setting
    is a title path, because bookmark ids differ between computers, and a path
    that doesn't resolve here -- or a folder dragged elsewhere in the bookmark

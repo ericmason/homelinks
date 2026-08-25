@@ -12,10 +12,27 @@
       Edit on the laptop, open a new tab on the desktop, and the change is
       there.
 
-   Layout mirrors the page: Homepage / <group> / <link>. Nothing outside that
+   Layout mirrors the page: Homelinks / <group> / <link>. Nothing outside that
    folder is ever touched. */
 
-const FOLDER = 'Homepage';
+const FOLDER = 'Homelinks';
+
+/* The folder was called Homepage until the project took its own name. It is
+   found by title, so renaming the constant alone would walk straight past the
+   one already synced to your other computers and build an empty second copy
+   beside it. Take the old one over in place instead: same id, same position in
+   the sync chain, same links. */
+const LEGACY = 'Homepage';
+async function adoptLegacy() {
+  for (const n of await chrome.bookmarks.search({ title: LEGACY })) {
+    if (n.url) continue;
+    if (!(await chrome.bookmarks.getChildren(n.id)).length) continue;
+    await chrome.bookmarks.update(n.id, { title: FOLDER });
+    const [renamed] = await chrome.bookmarks.get(n.id);
+    return renamed;
+  }
+  return null;
+}
 
 export const granted = () =>
   chrome.permissions.contains({ permissions: ['bookmarks'] });
@@ -35,7 +52,7 @@ async function otherBookmarks() {
   return other?.id || '1';
 }
 
-/* Which folder the Homepage folder sits in. Bookmark ids are assigned per
+/* Which folder the Homelinks folder sits in. Bookmark ids are assigned per
    profile, so the choice cannot travel between computers as an id: it is stored
    as the folder titles on the way down from the root. An empty path means Other
    Bookmarks, where this used to be nailed. A path that doesn't exist on this
@@ -91,7 +108,7 @@ async function resolveFolder(create) {
   // so match by name before creating a duplicate.
   const parent = await parentFolder();
   const hits = (await chrome.bookmarks.getChildren(parent)).filter(n => !n.url && n.title === FOLDER);
-  let node = hits[0] || await findAnywhere();
+  let node = hits[0] || await findAnywhere() || await adoptLegacy();
   if (!node) {
     if (!create) return null;
     node = await chrome.bookmarks.create({ parentId: parent, title: FOLDER });
@@ -197,7 +214,7 @@ export async function unmirror() {
 
 /* ------------------------------------------------------- where it lives */
 
-/* Every folder in the tree, flat, for the picker. The Homepage folder and
+/* Every folder in the tree, flat, for the picker. The Homelinks folder and
    everything under it are left out: it cannot be its own parent. */
 export async function folders() {
   if (!chrome.bookmarks || !(await granted())) return [];
