@@ -7,7 +7,7 @@
 
 import { api } from './data.js';
 import { PROVIDERS, curate } from './curate.js';
-import { push, pull, unmirror, granted } from './bookmarks.js';
+import { push, pull, unmirror, granted, folders, parentOf, setParent } from './bookmarks.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -522,6 +522,31 @@ async function renderDisplay() {
   $('#dateFmt').value = S.settings.dateFormat || 'us';
   $('#nameFld').value = S.settings.name || '';
   $('#mirrorBm').checked = !!S.settings.mirrorBookmarks && await granted();
+  await renderBmParent();
+}
+
+/* The picker lists this profile's folders and selects the one the Homepage
+   folder is actually in, which is not always the one in settings: the setting
+   is a title path, because bookmark ids differ between computers, and a path
+   that doesn't resolve here -- or a folder dragged elsewhere in the bookmark
+   manager -- leaves the two disagreeing. Show the folder the user can go look
+   at. */
+async function renderBmParent() {
+  const row = $('#bmParentRow');
+  const on = $('#mirrorBm').checked;
+  row.style.display = on ? '' : 'none';
+  if (!on) return;
+  const [list, here] = await Promise.all([folders(), parentOf()]);
+  const sel = $('#bmParent');
+  sel.innerHTML = '';
+  for (const f of list) {
+    const o = document.createElement('option');
+    o.value = JSON.stringify(f.path);
+    o.textContent = '\u2007\u2007'.repeat(f.depth) + f.title;
+    sel.appendChild(o);
+  }
+  const want = JSON.stringify(here || S.settings.bookmarkParent || []);
+  sel.value = list.some(f => JSON.stringify(f.path) === want) ? want : (sel.options[0]?.value || '');
 }
 
 const sheetOpen = () => { curateClose(); $('#sheet').hidden = false; $('#veil').hidden = false; renderSheet(); renderDisplay(); };
@@ -682,7 +707,7 @@ function wire() {
     }
     S.settings.mirrorBookmarks = on;
     await saveSettings();
-    if (!on) { await unmirror(); return toast('Bookmarks removed'); }
+    if (!on) { await unmirror(); await renderBmParent(); return toast('Bookmarks removed'); }
 
     // On a second computer the synced folder is already the newer copy, so take
     // what it has before writing anything over it.
@@ -690,12 +715,30 @@ function wire() {
     if (remote) {
       S.links = remote; render();
       await saveLinks();                       // persists, and restamps the folder
+      await renderBmParent();
       const n = remote.reduce((t, g) => t + g.items.length, 0);
       return toast(`${n} links picked up from your other computer`);
     }
     const r = await push(S.links);
+    await renderBmParent();
     if (!r) return toast('Nothing to bookmark yet');
     toast(`${r.links} link${r.links > 1 ? 's' : ''} bookmarked in ${r.groups} folder${r.groups > 1 ? 's' : ''}`);
+  };
+
+  // Moving keeps the folder's id, so the other computer sees a move rather than
+  // every link deleted and made again.
+  $('#bmParent').onchange = async (e) => {
+    const path = JSON.parse(e.target.value || '[]');
+    try {
+      await setParent(path);
+    } catch {
+      await renderBmParent();
+      return toast('That folder cannot be written to');
+    }
+    S.settings.bookmarkParent = path;
+    await saveSettings();
+    await push(S.links).catch(() => {});       // creates it there if it was never made
+    toast('Bookmarks folder moved to ' + path.join(' / '));
   };
 
   $('#file').onchange = async (e) => {

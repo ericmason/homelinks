@@ -66,13 +66,17 @@ The same sheet sets the clock to 12- or 24-hour, the date to `Fri, Aug 21` / `Fr
 
 ## Address bar
 
-Turn on **Keep a bookmarks folder** and the extension writes your links to a folder called `Homepage`, under Other Bookmarks, laid out the way the page is: `Homepage / <group> / <link>`. Chrome's omnibox indexes bookmarks by title as well as URL, so typing `confluence` finds `equisolve.atlassian.net` — something history alone never does, because history only matches the URL.
+Turn on **Keep a bookmarks folder** and the extension writes your links to a folder called `Homepage`, laid out the way the page is: `Homepage / <group> / <link>`. Chrome's omnibox indexes bookmarks by title as well as URL, so typing `confluence` finds `equisolve.atlassian.net` — something history alone never does, because history only matches the URL.
+
+The **Folder** picker under the setting says where that folder lives. It lists every folder in this profile, defaults to Other Bookmarks, and moving it keeps the same folder, so the links inside are not deleted and made again. Drag the folder somewhere else in the bookmark manager and the picker follows it there.
 
 It asks for bookmark access at that moment, not at install. Renaming, reordering, or deleting a link updates the folder. Turning the setting off deletes the folder and nothing else; your links stay in the app.
 
 ## Syncing between computers
 
 The same folder carries your links between machines. Sign both browsers into the same sync chain, turn the setting on in each, and an edit on one shows up on the other the next time you open a tab there. There is no server, no account, and nothing to configure: bookmarks are the one thing browsers sync reliably, and the folder is already there for the address bar.
+
+Each computer keeps its own answer to where the folder sits, because bookmark ids are handed out per profile: the picker stores the folder names on the way down, and a path the other computer doesn't have falls back to Other Bookmarks rather than building folders you didn't ask for. A computer that finds the synced `Homepage` folder somewhere else adopts it where it stands, so the two never drag it back and forth.
 
 Every local edit writes the folder and records what it wrote. When a new tab finds the folder no longer matching that record, the change came from somewhere else, so the page adopts it and says so. Edits made by hand in the bookmark manager come across the same way. Last edit wins, which is the right answer when one person is using both computers.
 
