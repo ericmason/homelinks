@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>New Tab</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div id="bg" class="bg"></div>
+<div class="bg-scrim"></div>
+<div class="bg-grain" aria-hidden="true"></div>
+
+<main class="plate" id="plate">
+
+  <header class="head">
+    <div class="clock">
+      <span class="clock-hm" id="hm">--:--</span><span class="clock-tail"><span class="clock-s" id="sec">--</span><span class="clock-m" id="mer" hidden></span></span>
+    </div>
+    <div class="head-right">
+      <div class="date" id="date"></div>
+      <div class="greet" id="greet"></div>
+    </div>
+  </header>
+
+  <div class="prompt" id="promptRow">
+    <span class="prompt-caret" aria-hidden="true"></span>
+    <input id="q" type="text" autocomplete="off" autocorrect="off" spellcheck="false"
+           aria-label="Jump to a site or search the web">
+    <label class="prompt-ghost" for="q" id="ghost">go where</label>
+    <span class="prompt-hint" id="hint"></span>
+  </div>
+
+  <div id="sections" class="sections"></div>
+
+  <section class="empty" id="empty" hidden>
+    <p>Nothing here yet.</p>
+    <button class="cta" id="emptyCurate">Organize my links from history</button>
+    <p class="empty-alt">or press <kbd>⌘E</kbd> and add them by hand</p>
+  </section>
+
+  <section class="freq" id="freqWrap" hidden>
+    <div class="eyebrow">
+      <span class="eyebrow-t">Frequent</span>
+      <span class="rule"></span>
+      <button class="ghostbtn" id="freqRefresh" title="Recount from Brave history">recount</button>
+    </div>
+    <div class="freq-row" id="freq"></div>
+  </section>
+
+  <footer class="foot">
+    <button class="ghostbtn" id="editBtn"><kbd>⌘E</kbd> edit</button>
+    <button class="ghostbtn" id="curateBtn"><kbd>⌘O</kbd> organize</button>
+    <button class="ghostbtn" id="bgBtn"><kbd>⌘B</kbd> appearance</button>
+  </footer>
+</main>
+
+<!-- background sheet -->
+<div class="sheet-veil" id="veil" hidden></div>
+<aside class="sheet" id="sheet" hidden aria-label="Background settings">
+  <div class="sheet-head">
+    <h2>Appearance</h2>
+    <button class="ghostbtn" id="sheetClose">close</button>
+  </div>
+
+  <div class="tabs" id="bgTabs">
+    <button data-mode="gradient" class="tab">Gradient</button>
+    <button data-mode="photo" class="tab">Photo</button>
+    <button data-mode="solid" class="tab">Solid</button>
+  </div>
+
+  <div class="pane" id="paneGradient">
+    <div class="swatches" id="gradSwatches"></div>
+  </div>
+
+  <div class="pane" id="panePhoto">
+    <div class="photo-actions">
+      <label class="filebtn">add image<input type="file" id="file" accept="image/*" multiple hidden></label>
+      <select id="rotate" class="mini">
+        <option value="pinned">show the one I pick</option>
+        <option value="day">change once a day</option>
+        <option value="load">change every new tab</option>
+      </select>
+    </div>
+    <div class="swatches" id="photoSwatches"></div>
+  </div>
+
+  <div class="pane" id="paneSolid">
+    <div class="swatches" id="solidSwatches"></div>
+  </div>
+
+  <div class="sliders">
+    <label class="slider"><span>Dim</span><input type="range" id="dim" min="0" max="85" step="1"><b id="dimV"></b></label>
+    <label class="slider"><span>Blur</span><input type="range" id="blur" min="0" max="24" step="1"><b id="blurV"></b></label>
+    <label class="check"><input type="checkbox" id="grain"><span>Grain</span></label>
+  </div>
+
+  <div class="sliders">
+    <label class="field"><span>Clock</span>
+      <select id="clockFmt" class="mini">
+        <option value="24">24-hour &middot; 13:00</option>
+        <option value="12">12-hour &middot; 1:00 PM</option>
+      </select>
+    </label>
+    <label class="field"><span>Date</span>
+      <select id="dateFmt" class="mini">
+        <option value="us">Fri, Aug 21</option>
+        <option value="euro">Fri 21 Aug</option>
+        <option value="numeric-us">Fri, 8/21</option>
+        <option value="numeric-euro">Fri 21/08</option>
+      </select>
+    </label>
+    <label class="field"><span>Name</span>
+      <input id="nameFld" class="mini" type="text" autocomplete="off" placeholder="skips the greeting if blank">
+    </label>
+    <label class="check"><input type="checkbox" id="mirrorBm"><span>Keep a bookmarks folder</span></label>
+    <p class="note" id="mirrorNote">Saves your links to a <b>Homepage</b> bookmarks folder, which does two things. Typing "confluence" in the address bar finds equisolve.atlassian.net, because the address bar searches bookmark names but not link names. And because browsers sync bookmarks, turning this on with the same browser account on another computer carries your links there too.</p>
+  </div>
+</aside>
+
+<aside class="sheet" id="curateSheet" hidden aria-label="Organize links">
+  <div class="sheet-head">
+    <h2>Organize links</h2>
+    <button class="ghostbtn" id="curateClose">close</button>
+  </div>
+
+  <div id="curateSetup">
+    <p class="note lead">Reads this profile's browsing history and asks your AI provider to sort it into groups. The history never leaves your machine except in that one request, and the key is stored on this device only.</p>
+
+    <label class="field"><span>Provider</span>
+      <select id="aiProvider" class="mini"></select>
+    </label>
+    <label class="field"><span>API key</span>
+      <input id="aiKey" class="mini" type="password" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="field"><span>Model</span>
+      <input id="aiModel" class="mini" type="text" autocomplete="off" spellcheck="false">
+    </label>
+    <p class="note"><a id="keyLink" target="_blank" rel="noopener">Get a key</a></p>
+
+    <button class="cta" id="runCurate">Organize my links</button>
+    <label class="check auto"><input type="checkbox" id="autoCurate"><span>Refresh monthly</span></label>
+  </div>
+
+  <div id="curateResult" hidden>
+    <div id="curatePreview" class="preview"></div>
+    <div class="preview-actions">
+      <button class="cta" id="applyCurate">Use these</button>
+      <button class="ghostbtn" id="discardCurate">discard</button>
+    </div>
+    <p class="note" id="curateDropped"></p>
+  </div>
+</aside>
+
+<div class="toast" id="toast" hidden></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="grainFilter"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3"/></filter>
+</svg>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

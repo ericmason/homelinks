@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Homepage",
+  "version": "2.2.0",
+  "description": "A keyboard-first new tab that organizes itself from your own browsing history.",
+  "minimum_chrome_version": "116",
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "background": {
+    "service_worker": "sw.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "history",
+    "topSites",
+    "alarms",
+    "favicon"
+  ],
+  "host_permissions": [
+    "https://api.anthropic.com/*",
+    "https://api.openai.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "optional_permissions": [
+    "bookmarks"
+  ]
+}
