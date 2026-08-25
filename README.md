@@ -96,6 +96,8 @@ Nothing here compiles. The extension is ES modules the browser loads as they are
 
 `scripts/build.sh` exists only to make a release. It copies `extension/` to `dist/extension/`, drops the `.DS_Store` files macOS leaves behind, checks that every path the manifest names is in the copy, and zips it as `dist/homelinks-<version>.zip` for the Chrome Web Store. `dist/` is gitignored; the artifact is built from source, never committed.
 
+Changes you can see from the outside are recorded in [CHANGELOG.md](CHANGELOG.md), in the same commit as the change.
+
 ## Files
 
 | File | Holds |
