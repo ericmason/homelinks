@@ -47,7 +47,7 @@ Open source: https://github.com/ericmason/homelinks
 
 - **Category**: Productivity → Workflow & Planning.
 - **Language**: English (United States).
-- **Visibility**: Public. Unlisted also works if you would rather hand the link out yourself; nothing in the code depends on which you pick.
+- **Visibility**: Public, so the item is listed and searchable. Decided 2026-08-25.
 
 ## Privacy tab
 
