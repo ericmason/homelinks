@@ -72,7 +72,7 @@ The **Folder** picker under the setting says where that folder lives. It lists e
 
 It asks for bookmark access at that moment, not at install. Renaming, reordering, or deleting a link updates the folder. Turning the setting off deletes the folder and nothing else; your links stay in the app.
 
-The folder was called `Homepage` before the project took its own name. Because it is found by title, a rename alone would walk past the one already synced to your other computers and build an empty second copy beside it, so the extension takes the old folder over in place: same folder, same links, new name.
+The folder was called `Homepage` before the project took its own name. Because it is found by title, a rename alone would walk past the one already synced to your other computers and build an empty second copy beside it, so the extension takes the old folder over in place: same folder, same links, new name. A folder of your own that happens to be called `Homepage` is left alone: it only adopts one shaped like its own, with groups at the top level and links inside them.
 
 ## Syncing between computers
 
