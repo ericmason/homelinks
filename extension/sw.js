@@ -34,6 +34,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     const { groups } = await curate({ ...s.ai, existing });
     await Store.putLinks(groups);
   } catch (e) {
-    console.warn('[homepage] scheduled curation failed:', e.message);
+    console.warn('[homelinks] scheduled curation failed:', e.message);
   }
 });

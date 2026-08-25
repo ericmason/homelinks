@@ -2,8 +2,8 @@
 
    1. Address bar autocomplete. Chrome's omnibox indexes bookmarks by title as
       well as URL and scores an early title match highly, so a bookmark named
-      "Confluence" answers "conf" even though its URL says
-      equisolve.atlassian.net. Nothing else gets you that: history matches on
+      "Payroll" answers "pay" even though its URL is a hostname nobody would
+      think to type. Nothing else gets you that: history matches on
       URL, and chrome.omnibox needs a keyword prefix.
 
    2. Sync between computers. Bookmarks are the one thing browsers sync

@@ -96,7 +96,7 @@ Schema:
 Rules:
 
 1. Only use hosts that appear in the candidate list. You may add a path to link somewhere more useful than the bare domain (https://mail.google.com/mail/u/0/ rather than https://mail.google.com/), and you should when there is an obvious landing page. Never invent a host.
-2. Name each link the way this person would say it out loud. "Client Area", not "Companies :: Equisolve Client Area". "Gmail", not "Inbox (15)". Aim for under 18 characters. The titles below are raw page titles and are often junk: treat them as a hint about what the site is, not as the name.
+2. Name each link the way this person would say it out loud. "Client Area", not "Companies :: Acme Client Area". "Gmail", not "Inbox (15)". Aim for under 18 characters. The titles below are raw page titles and are often junk: treat them as a hint about what the site is, not as the name.
 3. Leave out anything that is not a destination: sign-in and OAuth pages, redirects, link shorteners, search result pages, one-off lookups, IP checkers, clock sites, and any URL that looks like a session id, a ticket number, or a single record.
 4. Group by what the person is doing, not by who makes the software. 3 to 5 groups, 4 to 10 links each. One-word group names where you can.
 5. Order groups by how central they are to the person's day, and links within a group by how often they would be opened.

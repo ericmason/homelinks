@@ -6,10 +6,12 @@ The top section is the version in `extension/manifest.json`. It reads `## <versi
 
 ## 2.2.0 — unreleased
 
+- The extension no longer asks for the `topSites` permission. It had stopped using it, and every permission it asks for is one more line in the install prompt. ([82f5c0b](https://github.com/ericmason/homelinks/commit/82f5c0b))
+- A link added from a site behind a bot check is named after the site rather than the waiting room. Chrome files "Just a moment..." as the page's title while Cloudflare decides, and that was what the new link got called. ([82f5c0b](https://github.com/ericmason/homelinks/commit/82f5c0b))
 - The extension is called **Homelinks**. The bookmarks folder is renamed to match, and the old `Homepage` folder is taken over in place, so your other computers see a rename rather than a folder deleted and rebuilt. ([509f3e2](https://github.com/ericmason/homelinks/commit/509f3e2))
 - A folder of your own called `Homepage` is left alone. Only a folder shaped like the one the extension writes — groups at the top level, links inside them — is adopted, which matters because the next save deletes anything in the adopted folder it did not put there. ([9e3e0f7](https://github.com/ericmason/homelinks/commit/9e3e0f7))
 - **Folder** in ⌘B picks which bookmarks folder holds the Homelinks folder, instead of it always being Other Bookmarks. It lists every folder in the profile, and moving it keeps the same folder, so the links inside are not deleted and made again. The choice travels between computers as folder names rather than ids, which are assigned per profile. ([579421f](https://github.com/ericmason/homelinks/commit/579421f), [71a2619](https://github.com/ericmason/homelinks/commit/71a2619))
-- Adding a link starts at its URL. Leave the field and the site's own favicon appears and the name fills in from this profile's history — "Confluence" for equisolve.atlassian.net — with the domain as a fallback for a site the browser has never seen. ([d6ffb83](https://github.com/ericmason/homelinks/commit/d6ffb83))
+- Adding a link starts at its URL. Leave the field and the site's own favicon appears and the name fills in from this profile's history — "Hacker News" for news.ycombinator.com — with the domain as a fallback for a site the browser has never seen. ([d6ffb83](https://github.com/ericmason/homelinks/commit/d6ffb83))
 - **Model** in the Organize sheet is a dropdown of the models your key can actually use, fetched from the provider the moment the key works. A key the provider rejects leaves the field as a text box and says why. ([12c4cea](https://github.com/ericmason/homelinks/commit/12c4cea))
 
 ## 2.1.0 and earlier

@@ -66,7 +66,7 @@ The same sheet sets the clock to 12- or 24-hour, the date to `Fri, Aug 21` / `Fr
 
 ## Address bar
 
-Turn on **Keep a bookmarks folder** and the extension writes your links to a folder called `Homelinks`, laid out the way the page is: `Homelinks / <group> / <link>`. Chrome's omnibox indexes bookmarks by title as well as URL, so typing `confluence` finds `equisolve.atlassian.net` — something history alone never does, because history only matches the URL.
+Turn on **Keep a bookmarks folder** and the extension writes your links to a folder called `Homelinks`, laid out the way the page is: `Homelinks / <group> / <link>`. Chrome's omnibox indexes bookmarks by title as well as URL, so typing `payroll` finds the HR site whose hostname you would never think to type — something history alone never does, because history only matches the URL.
 
 The **Folder** picker under the setting says where that folder lives. It lists every folder in this profile, defaults to Other Bookmarks, and moving it keeps the same folder, so the links inside are not deleted and made again. Drag the folder somewhere else in the bookmark manager and the picker follows it there.
 
@@ -92,11 +92,13 @@ Chrome and Brave give a new tab's keyboard focus to the address bar, and [the ex
 
 ## Packaging
 
-Nothing here compiles. The extension is ES modules the browser loads as they are, so `load unpacked` on `extension/` is the whole development loop: edit a file, hit reload on the extensions page, open a tab.
+Nothing here compiles. The extension is ES modules the browser loads as they are, so `load unpacked` on `extension/` is the whole development loop: edit a file, click reload on the extensions page, open a tab.
 
 `scripts/build.sh` exists only to make a release. It copies `extension/` to `dist/extension/`, drops the `.DS_Store` files macOS leaves behind, checks that every path the manifest names is in the copy, and zips it as `dist/homelinks-<version>.zip` for the Chrome Web Store. `dist/` is gitignored; the artifact is built from source, never committed.
 
 Changes you can see from the outside are recorded in [CHANGELOG.md](CHANGELOG.md), in the same commit as the change.
+
+`docs/` holds what a release needs beyond the zip: [the store listing copy and its privacy answers](docs/chrome-web-store-submission.md), [the privacy policy](docs/privacy-policy.md), and the listing images in `docs/store/`. Regenerate the images with `node scripts/store-assets/capture.mjs && python3 scripts/store-assets/assemble.py`, which drives a real browser with the built extension loaded, so the screenshots are the extension rendering rather than a mockup.
 
 ## Files
 

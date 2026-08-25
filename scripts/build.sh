@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Produce a clean, load-unpackable extension folder and a Chrome Web Store zip.
-# Modelled on equisolve/freshdesk-extension: extension/ is the source of truth,
+# extension/ is the source of truth,
 # and everything the store gets is copied into dist/extension/ -- no README, no
 # scripts, no scratch files. dist/ is gitignored; the artifact is regenerated
 # from source, never committed.
