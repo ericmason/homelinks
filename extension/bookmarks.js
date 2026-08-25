@@ -25,13 +25,27 @@ const FOLDER = 'Homelinks';
 const LEGACY = 'Homepage';
 async function adoptLegacy() {
   for (const n of await chrome.bookmarks.search({ title: LEGACY })) {
-    if (n.url) continue;
-    if (!(await chrome.bookmarks.getChildren(n.id)).length) continue;
+    if (n.url || !(await looksMine(n.id))) continue;
     await chrome.bookmarks.update(n.id, { title: FOLDER });
     const [renamed] = await chrome.bookmarks.get(n.id);
     return renamed;
   }
   return null;
+}
+
+/* Does this folder look like one we wrote? Groups at the top, links inside
+   them, nothing loose. Adopting a folder is not free -- the next push deletes
+   whatever is in it that isn't one of these links -- and "Homepage" is a name
+   people give their own folders, which hold bookmarks directly and so fail
+   this. Match on shape, not just on the title. */
+async function looksMine(id) {
+  const kids = await chrome.bookmarks.getChildren(id);
+  if (!kids.length || kids.some(k => k.url)) return false;
+  for (const k of kids) {
+    const inner = await chrome.bookmarks.getChildren(k.id);
+    if (inner.length && inner.every(b => b.url)) return true;
+  }
+  return false;
 }
 
 export const granted = () =>
@@ -81,8 +95,7 @@ async function parentFolder() {
    back and forth. */
 async function findAnywhere() {
   for (const n of await chrome.bookmarks.search({ title: FOLDER })) {
-    if (n.url) continue;
-    if ((await chrome.bookmarks.getChildren(n.id)).length) return n;
+    if (!n.url && await looksMine(n.id)) return n;
   }
   return null;
 }
