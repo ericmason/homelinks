@@ -104,4 +104,8 @@ Chrome and Brave give a new tab's keyboard focus to the address bar, and [the ex
 | `bookmarks.js` | the `Homelinks` folder: address-bar names, and sync between computers |
 | `sw.js` | the monthly re-curation alarm |
 
-Fonts and their licenses are in `extension/fonts/`.
+## License
+
+MIT, in [LICENSE](LICENSE).
+
+The three bundled fonts are not covered by it. Inter Tight, IBM Plex Mono, and Martian Mono each ship under the SIL Open Font License, with the full text next to them in `extension/fonts/licenses/`. Keep those files with the fonts if you redistribute the extension.
