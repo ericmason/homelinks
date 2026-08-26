@@ -52,10 +52,12 @@ body[data-grain="on"] .bg-grain{display:block}
   backdrop-filter:blur(26px) saturate(1.5);
   -webkit-backdrop-filter:blur(26px) saturate(1.5);
   scrollbar-width:none;
-  animation:plate-in .42s var(--ease) both;
+  animation:plate-in .2s var(--ease) both;
 }
 .plate::-webkit-scrollbar{display:none}
-@keyframes plate-in{from{opacity:0;transform:translateY(10px) scale(.988)}to{opacity:1;transform:none}}
+/* Short on purpose. The page is complete in its first frame now, so this is
+   the only thing left between opening a tab and reading it. */
+@keyframes plate-in{from{opacity:0;transform:translateY(6px) scale(.992)}to{opacity:1;transform:none}}
 
 /* ---------- head ---------- */
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
