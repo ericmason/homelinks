@@ -43,6 +43,12 @@ body{
 body[data-grain="on"] .bg-grain{display:block}
 
 /* ---------- plate ---------- */
+/* No entrance animation. There was a fade here, and it existed to cover a page
+   that was still assembling itself. The page is complete in its first frame
+   now, so the fade was the only thing left to wait for -- it held the content
+   at partial opacity for its whole duration, which is also why it never counted
+   as a contentful paint. The sheets still animate: those answer a click, and
+   there is nothing behind them to hold up. */
 .plate{
   position:relative;z-index:3;width:var(--plate-w);max-height:92vh;overflow:auto;
   padding:26px 30px 18px;border-radius:var(--r);
@@ -52,12 +58,8 @@ body[data-grain="on"] .bg-grain{display:block}
   backdrop-filter:blur(26px) saturate(1.5);
   -webkit-backdrop-filter:blur(26px) saturate(1.5);
   scrollbar-width:none;
-  animation:plate-in .2s var(--ease) both;
 }
 .plate::-webkit-scrollbar{display:none}
-/* Short on purpose. The page is complete in its first frame now, so this is
-   the only thing left between opening a tab and reading it. */
-@keyframes plate-in{from{opacity:0;transform:translateY(6px) scale(.992)}to{opacity:1;transform:none}}
 
 /* ---------- head ---------- */
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
