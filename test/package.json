@@ -1,0 +1,14 @@
+{
+  "name": "homelinks-test",
+  "private": true,
+  "type": "module",
+  "description": "Browser tests for the Homelinks extension. Not shipped; the extension has no build step and no runtime dependencies.",
+  "scripts": {
+    "smoke": "node smoke.mjs",
+    "bench": "node bench.mjs",
+    "film": "node film.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.51.1"
+  }
+}
